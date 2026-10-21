@@ -86,7 +86,7 @@ function Header() {
       <Link to="/" className="brand">
         <span className="brand-icon">S</span>
         <span>
-          <strong>Student Sponsorship</strong>
+          <strong>Training Sponsorship</strong>
           <small>APPLICATION PORTAL</small>
         </span>
       </Link>
@@ -115,7 +115,7 @@ function Home() {
           </h1>
 
           <p>
-            Apply for student sponsorship and take the next
+            Apply for training sponsorship and take the next
             step towards Industrial Training and a brighter
             professional future.
           </p>
@@ -179,7 +179,7 @@ function Home() {
 
       <footer>
         <div>
-          <strong>Student Sponsorship Portal</strong>
+          <strong>Training Sponsorship Portal</strong>
           <span>Empowering future professionals</span>
         </div>
 
@@ -514,7 +514,7 @@ function ApplicationForm() {
 
       <div className="form-card application-card">
         <span className="eyebrow">STEP 2 OF 2</span>
-        <h1>Student application</h1>
+        <h1>Trainee application</h1>
 
         <p className="muted">
           Complete your details and upload the required documents.
