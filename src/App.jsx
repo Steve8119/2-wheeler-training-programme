@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Link,
@@ -5,6 +6,7 @@ import {
   Route,
   useNavigate,
   useSearchParams,
+  useLocation,
 } from "react-router-dom";
 
 const centres = [
@@ -35,6 +37,49 @@ const counties = [
 const STORAGE_KEY = "sponsorship_applications";
 const SESSION_KEY = "sponsorship_admin_session";
 
+// Browser prototype limits. A real deployment should use secure
+// file storage instead of storing identity documents in localStorage.
+const MAX_FILE_SIZE = 500 * 1024;
+const ALLOWED_FILE_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+];
+
+const documentTypes = [
+  {
+    key: "nationalId",
+    label: "National ID",
+    description: "Upload the front or scanned copy of your National ID.",
+    required: true,
+  },
+  {
+    key: "kcseCertificate",
+    label: "KCSE certificate",
+    description: "Upload your KCSE certificate or the accepted result document.",
+    required: true,
+  },
+  {
+    key: "supportingDocument",
+    label: "Other supporting document",
+    description: "Optional: upload any additional supporting document.",
+    required: false,
+  },
+];
+
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(
+      new Error(`Could not read ${file.name}. Please try again.`)
+    );
+
+    reader.readAsDataURL(file);
+  });
+}
+
 function Header() {
   return (
     <header className="header">
@@ -45,6 +90,7 @@ function Header() {
           <small>APPLICATION PORTAL</small>
         </span>
       </Link>
+
       <Link to="/admin" className="admin-link">
         Admin Login ↗
       </Link>
@@ -52,40 +98,94 @@ function Header() {
   );
 }
 
+// PAGE 1: Home page.
 function Home() {
   return (
     <>
       <section className="hero">
-        <span className="eyebrow">YOUR FUTURE STARTS HERE</span>
+        <div className="hero-content">
+          <span className="eyebrow">
+            YOUR FUTURE STARTS HERE
+          </span>
 
-        <h1>
-          Opportunity begins
-          <br />
-          with <span>one application.</span>
-        </h1>
+          <h1>
+            Opportunity begins
+            <br />
+            with <span>one application.</span>
+          </h1>
 
-        <p>
-          Apply for student sponsorship and take the next
-          step towards your technical education and career.
-        </p>
+          <p>
+            Apply for student sponsorship and take the next
+            step towards Industrial Training and a brighter
+            professional future.
+          </p>
 
-        <div className="hero-actions">
-          <Link to="/apply" className="button primary">
-            Apply for Sponsorship →
-          </Link>
+          <div className="hero-actions">
+            <Link to="/apply" className="button primary">
+              Apply for Sponsorship →
+            </Link>
 
-          <Link to="/admin" className="button secondary">
-            Administrator Login
-          </Link>
+            <Link to="/admin" className="button secondary">
+              Administrator Login
+            </Link>
+          </div>
+
+          <div className="hero-note">
+            <span className="hero-note-dot" />
+            Three centres. One opportunity to grow.
+          </div>
+        </div>
+      </section>
+
+      <section className="home-intro">
+        <div className="home-intro-heading">
+          <span className="eyebrow">GET STARTED</span>
+          <h2>Your journey to new opportunities starts here.</h2>
+          <p>
+            Choose your training centre, complete the application
+            form, and upload the required documents for consideration.
+          </p>
         </div>
 
-        <div className="hero-note">
-          Three centres. One opportunity to grow.
+        <div className="home-features">
+          <article className="home-feature">
+            <span className="feature-icon">01</span>
+            <h3>Choose your centre</h3>
+            <p>
+              Select NITA Mombasa, NITA Kisumu, or E-Waka Mobility
+              Nairobi.
+            </p>
+          </article>
+
+          <article className="home-feature">
+            <span className="feature-icon">02</span>
+            <h3>Complete your details</h3>
+            <p>
+              Provide accurate personal information for your
+              sponsorship application.
+            </p>
+          </article>
+
+          <article className="home-feature">
+            <span className="feature-icon">03</span>
+            <h3>Upload documents</h3>
+            <p>
+              Attach your National ID and KCSE certificate, plus
+              any additional supporting documents.
+            </p>
+          </article>
         </div>
       </section>
 
       <footer>
-        Student Sponsorship Portal · Empowering future professionals
+        <div>
+          <strong>Student Sponsorship Portal</strong>
+          <span>Empowering future professionals</span>
+        </div>
+
+        <Link to="/apply" className="footer-apply">
+          Start your application →
+        </Link>
       </footer>
     </>
   );
@@ -93,6 +193,24 @@ function Home() {
 
 // PAGE 2: Select one of the three centres.
 function SelectCentre() {
+  const centreDetails = [
+    {
+      name: "NITA Mombasa",
+      location: "Mombasa",
+      number: "01",
+    },
+    {
+      name: "NITA Kisumu",
+      location: "Kisumu",
+      number: "02",
+    },
+    {
+      name: "E-Waka Mobility Nairobi",
+      location: "Nairobi",
+      number: "03",
+    },
+  ];
+
   return (
     <main className="page-wrap">
       <Link to="/" className="back-link">
@@ -109,20 +227,23 @@ function SelectCentre() {
         </p>
 
         <div className="centre-grid">
-          {centres.map((centre, index) => (
-            <article className="centre-card" key={centre}>
-              <span className="centre-number">
-                0{index + 1}
-              </span>
+          {centreDetails.map((item) => (
+            <article className="centre-card" key={item.name}>
+              <span className="centre-number">{item.number}</span>
 
-              <h3>{centre}</h3>
+              <div className="centre-location">
+                <span className="centre-location-dot" />
+                {item.location}
+              </div>
+
+              <h3>{item.name}</h3>
 
               <p>
                 Submit your sponsorship application for this centre.
               </p>
 
               <Link
-                to={`/apply/form?centre=${encodeURIComponent(centre)}`}
+                to={`/apply/form?centre=${encodeURIComponent(item.name)}`}
                 className="button primary"
               >
                 Choose centre →
@@ -152,20 +273,66 @@ function ApplicationForm() {
     technicalBackground: "",
   });
 
+  const [documents, setDocuments] = useState({
+    nationalId: null,
+    kcseCertificate: null,
+    supportingDocument: null,
+  });
+
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   function update(event) {
+    const { name, value } = event.target;
+
     setForm((previous) => ({
       ...previous,
-      [event.target.name]: event.target.value,
+      [name]: value,
     }));
 
     setError("");
   }
 
-  function submit(event) {
+  function updateDocument(event, documentKey) {
+    const file = event.target.files?.[0] || null;
+
+    setError("");
+
+    if (!file) {
+      setDocuments((previous) => ({
+        ...previous,
+        [documentKey]: null,
+      }));
+      return;
+    }
+
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      setError(
+        "Please upload PDF, JPG, or PNG documents only."
+      );
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setError(
+        `${file.name} is too large. Each document must be 500 KB or less in this browser prototype.`
+      );
+      event.target.value = "";
+      return;
+    }
+
+    setDocuments((previous) => ({
+      ...previous,
+      [documentKey]: file,
+    }));
+  }
+
+  async function submit(event) {
     event.preventDefault();
     setError("");
+
+    if (saving) return;
 
     if (!centres.includes(selectedCentre)) {
       setError("Please select a valid training centre.");
@@ -179,79 +346,147 @@ function ApplicationForm() {
       return;
     }
 
+    const fullName = form.fullName.trim();
     const email = form.email.trim().toLowerCase();
     const phone = form.phone.replace(/\D/g, "");
+
+    if (fullName.length < 2) {
+      setError("Please enter your full name.");
+      return;
+    }
 
     if (phone.length < 9 || phone.length > 15) {
       setError("Please enter a valid phone number.");
       return;
     }
 
-    let applications = [];
-
-    try {
-      applications = JSON.parse(
-        localStorage.getItem(STORAGE_KEY) || "[]"
-      );
-
-      if (!Array.isArray(applications)) {
-        applications = [];
-      }
-    } catch {
-      setError("Unable to read saved applications. Please try again.");
+    if (!form.county || !form.gender || !form.technicalBackground) {
+      setError("Please complete all required fields.");
       return;
     }
 
-    // Reject duplicate email OR duplicate phone number.
-    const duplicate = applications.some((application) => {
-      const savedEmail = String(application.email || "")
-        .trim()
-        .toLowerCase();
+    // Required document checks.
+    if (!documents.nationalId) {
+      setError("Please upload your National ID.");
+      return;
+    }
 
-      const savedPhone = String(application.phone || "")
-        .replace(/\D/g, "");
+    if (!documents.kcseCertificate) {
+      setError("Please upload your KCSE certificate.");
+      return;
+    }
 
-      return savedEmail === email || savedPhone === phone;
-    });
+    const selectedFiles = Object.values(documents).filter(Boolean);
+    const totalFileSize = selectedFiles.reduce(
+      (total, file) => total + file.size,
+      0
+    );
 
-    if (duplicate) {
+    if (totalFileSize > 1200 * 1024) {
       setError(
-        "An application already exists with this email address or phone number. Please use your original application instead of applying again."
+        "Your documents are too large in total. Please reduce their sizes and try again."
       );
       return;
     }
 
-    const application = {
-      id: crypto.randomUUID(),
-      centre: selectedCentre,
-      fullName: form.fullName.trim(),
-      email,
-      phone,
-      gender: form.gender,
-      age,
-      county: form.county,
-      technicalBackground: form.technicalBackground,
-      status: "Pending",
-      submittedAt: new Date().toISOString(),
-    };
+    setSaving(true);
 
     try {
+      let applications = [];
+
+      try {
+        applications = JSON.parse(
+          localStorage.getItem(STORAGE_KEY) || "[]"
+        );
+
+        if (!Array.isArray(applications)) {
+          applications = [];
+        }
+      } catch {
+        setError(
+          "Unable to read saved applications. Please try again."
+        );
+        setSaving(false);
+        return;
+      }
+
+      // Reject duplicate email OR duplicate phone number.
+      const duplicate = applications.some((application) => {
+        const savedEmail = String(application.email || "")
+          .trim()
+          .toLowerCase();
+
+        const savedPhone = String(application.phone || "")
+          .replace(/\D/g, "");
+
+        return savedEmail === email || savedPhone === phone;
+      });
+
+      if (duplicate) {
+        setError(
+          "An application already exists with this email address or phone number. Please use your original application instead of applying again."
+        );
+        setSaving(false);
+        return;
+      }
+
+      // Convert the selected files into data URLs for this local
+      // prototype. This is not recommended for production identity data.
+      const savedDocuments = {};
+
+      for (const documentType of documentTypes) {
+        const file = documents[documentType.key];
+
+        if (!file) {
+          savedDocuments[documentType.key] = null;
+          continue;
+        }
+
+        savedDocuments[documentType.key] = {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: await readFileAsDataURL(file),
+        };
+      }
+
+      const application = {
+        id:
+          typeof crypto !== "undefined" &&
+          typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+
+        centre: selectedCentre,
+        fullName,
+        email,
+        phone,
+        gender: form.gender,
+        age,
+        county: form.county,
+        technicalBackground: form.technicalBackground,
+        documents: savedDocuments,
+        status: "Pending",
+        submittedAt: new Date().toISOString(),
+      };
+
       applications.push(application);
 
       localStorage.setItem(
         STORAGE_KEY,
         JSON.stringify(applications)
       );
+
+      navigate("/success", {
+        state: { centre: selectedCentre },
+      });
     } catch {
       setError(
-        "Your application could not be saved in this browser. Please try again."
+        "Your application or documents could not be saved in this browser. Please reduce the document sizes or try another browser."
       );
-      return;
+    } finally {
+      setSaving(false);
     }
-
-    navigate("/success", {
-      state: { centre: selectedCentre },
-    });
   }
 
   if (!centres.includes(selectedCentre)) {
@@ -277,31 +512,41 @@ function ApplicationForm() {
         ← Change centre
       </Link>
 
-      <div className="form-card">
+      <div className="form-card application-card">
         <span className="eyebrow">STEP 2 OF 2</span>
         <h1>Student application</h1>
 
         <p className="muted">
-          Complete your details below. All fields are required.
+          Complete your details and upload the required documents.
+          All fields marked with * are required.
         </p>
 
-        <div className="notice">
+        <div className="notice centre-notice">
           Applying to: <strong>{selectedCentre}</strong>
         </div>
 
         {error && (
-          <div className="notice" role="alert">
+          <div className="notice error-notice" role="alert">
             {error}
           </div>
         )}
 
         <form onSubmit={submit}>
-          <label>Full name *</label>
+          <div className="form-section-heading">
+            <span>01</span>
+            <div>
+              <h2>Personal information</h2>
+              <p>Provide your correct contact details.</p>
+            </div>
+          </div>
+
+          <label htmlFor="fullName">Full name *</label>
           <input
+            id="fullName"
             name="fullName"
             value={form.fullName}
             onChange={update}
-            placeholder="Enter your full name"
+            placeholder="Enter your full name as shown on your ID"
             autoComplete="name"
             maxLength={100}
             required
@@ -309,8 +554,9 @@ function ApplicationForm() {
 
           <div className="form-grid">
             <div>
-              <label>Email address *</label>
+              <label htmlFor="email">Email address *</label>
               <input
+                id="email"
                 type="email"
                 name="email"
                 value={form.email}
@@ -323,8 +569,9 @@ function ApplicationForm() {
             </div>
 
             <div>
-              <label>Phone number *</label>
+              <label htmlFor="phone">Phone number *</label>
               <input
+                id="phone"
                 type="tel"
                 name="phone"
                 value={form.phone}
@@ -336,8 +583,9 @@ function ApplicationForm() {
             </div>
 
             <div>
-              <label>Gender *</label>
+              <label htmlFor="gender">Gender *</label>
               <select
+                id="gender"
                 name="gender"
                 value={form.gender}
                 onChange={update}
@@ -353,8 +601,9 @@ function ApplicationForm() {
             </div>
 
             <div>
-              <label>Age *</label>
+              <label htmlFor="age">Age *</label>
               <input
+                id="age"
                 type="number"
                 name="age"
                 value={form.age}
@@ -368,8 +617,9 @@ function ApplicationForm() {
             </div>
           </div>
 
-          <label>County of residence *</label>
+          <label htmlFor="county">County of residence *</label>
           <select
+            id="county"
             name="county"
             value={form.county}
             onChange={update}
@@ -383,12 +633,13 @@ function ApplicationForm() {
             ))}
           </select>
 
-          <label>
-            Do you have any technical background? *
+          <label htmlFor="industrialBackground">
+            Do you have any industrial background? *
           </label>
           <select
-            name="technicalBackground"
-            value={form.technicalBackground}
+            id="industrialBackground"
+            name="industrialBackground"
+            value={form.industrialBackground}
             onChange={update}
             required
           >
@@ -400,11 +651,110 @@ function ApplicationForm() {
             </option>
           </select>
 
+          <div className="form-section-heading document-heading">
+            <span>02</span>
+            <div>
+              <h2>Required documents</h2>
+              <p>
+                Upload clear, readable copies of your documents.
+              </p>
+            </div>
+          </div>
+
+          <div className="document-guidance">
+            <strong>Accepted formats: PDF, JPG, and PNG</strong>
+            <span>
+              Maximum 500 KB per file in this browser prototype.
+            </span>
+          </div>
+
+          <div className="document-grid">
+            {documentTypes.map((documentType) => {
+              const file = documents[documentType.key];
+
+              return (
+                <div className="document-card" key={documentType.key}>
+                  <div className="document-card-top">
+                    <span className="document-icon">↑</span>
+
+                    <span
+                      className={
+                        documentType.required
+                          ? "required-tag"
+                          : "optional-tag"
+                      }
+                    >
+                      {documentType.required ? "REQUIRED" : "OPTIONAL"}
+                    </span>
+                  </div>
+
+                  <label htmlFor={documentType.key}>
+                    {documentType.label}
+                    {documentType.required ? " *" : ""}
+                  </label>
+
+                  <p>{documentType.description}</p>
+
+                  <input
+                    id={documentType.key}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                    onChange={(event) =>
+                      updateDocument(event, documentType.key)
+                    }
+                    required={documentType.required}
+                  />
+
+                  {file ? (
+                    <div className="selected-file">
+                      <span className="file-check">✓</span>
+                      <span className="selected-file-name">
+                        {file.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="remove-file"
+                        aria-label={`Remove ${file.name}`}
+                        onClick={() => {
+                          setDocuments((previous) => ({
+                            ...previous,
+                            [documentType.key]: null,
+                          }));
+
+                          const input = document.getElementById(
+                            documentType.key
+                          );
+
+                          if (input) input.value = "";
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="file-hint">
+                      No file selected
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="document-privacy-note">
+            <strong>Important:</strong> Upload genuine, readable
+            documents. In this browser-only prototype, files are stored
+            locally in the browser and are not securely uploaded to a
+            central server. Do not use real sensitive documents in a
+            public deployment until secure storage is configured.
+          </div>
+
           <button
             type="submit"
             className="button primary submit-button"
+            disabled={saving}
           >
-            Submit application →
+            {saving ? "Saving application..." : "Submit application →"}
           </button>
 
           <p className="privacy-note">
@@ -443,7 +793,6 @@ function Admin() {
       return;
     }
 
-    // Store a centre-scoped admin session in this browser.
     try {
       sessionStorage.setItem(
         SESSION_KEY,
@@ -477,8 +826,9 @@ function Admin() {
         </p>
 
         <form onSubmit={login}>
-          <label>Training centre *</label>
+          <label htmlFor="adminCentre">Training centre *</label>
           <select
+            id="adminCentre"
             value={centre}
             onChange={(event) => {
               setCentre(event.target.value);
@@ -494,8 +844,9 @@ function Admin() {
             ))}
           </select>
 
-          <label>Centre access code *</label>
+          <label htmlFor="adminCode">Centre access code *</label>
           <input
+            id="adminCode"
             type="password"
             value={code}
             onChange={(event) => {
@@ -508,18 +859,22 @@ function Admin() {
           />
 
           {error && (
-            <div className="notice" role="alert">
+            <div className="notice error-notice" role="alert">
               {error}
             </div>
           )}
 
-          <button className="button primary submit-button" type="submit">
+          <button
+            className="button primary submit-button"
+            type="submit"
+          >
             Sign in →
           </button>
 
           <p className="privacy-note">
-            Each access code only unlocks the dashboard and
-            applications for its own centre.
+            Each access code selects the dashboard for its own centre.
+            These browser-only codes are not secure production
+            authentication.
           </p>
         </form>
       </div>
@@ -530,10 +885,8 @@ function Admin() {
 // PAGE 5: Centre-specific admin dashboard.
 function AdminDashboard() {
   const navigate = useNavigate();
-
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Read the admin session from this browser.
   let session = null;
 
   try {
@@ -576,7 +929,6 @@ function AdminDashboard() {
     );
   }
 
-  // Load applications for the signed-in centre only.
   let applications = [];
 
   try {
@@ -599,8 +951,14 @@ function AdminDashboard() {
     (application) => application.status === "Pending"
   ).length;
 
+  const withDocuments = applications.filter(
+    (application) =>
+      application.documents?.nationalId &&
+      application.documents?.kcseCertificate
+  ).length;
+
   return (
-    <main className="page-wrap">
+    <main className="page-wrap dashboard-page">
       <div className="dashboard-topbar">
         <Link to="/" className="back-link">
           ← Back to home
@@ -615,12 +973,12 @@ function AdminDashboard() {
         </button>
       </div>
 
-      <div className="form-card">
+      <div className="form-card dashboard-card">
         <span className="eyebrow">ADMINISTRATOR DASHBOARD</span>
         <h1>{centre}</h1>
 
         <p className="muted">
-          Applications submitted for this centre in this browser.
+          Applications saved in this browser for your selected centre.
         </p>
 
         <div className="stats-grid">
@@ -633,6 +991,11 @@ function AdminDashboard() {
             <strong>{pending}</strong>
             <span>Pending review</span>
           </div>
+
+          <div className="stat-card">
+            <strong>{withDocuments}</strong>
+            <span>With required documents</span>
+          </div>
         </div>
 
         <div className="dashboard-actions">
@@ -641,14 +1004,19 @@ function AdminDashboard() {
             type="button"
             onClick={() => setRefreshKey((value) => value + 1)}
           >
-            Refresh list
+            ↻ Refresh list
           </button>
         </div>
 
         {total === 0 ? (
-          <p className="muted">
-            No applications have been submitted for {centre} yet.
-          </p>
+          <div className="empty-state">
+            <span className="empty-state-icon">▤</span>
+            <h2>No applications yet</h2>
+            <p>
+              No applications have been submitted for {centre} in
+              this browser.
+            </p>
+          </div>
         ) : (
           <div className="table-wrap" key={refreshKey}>
             <table className="applications-table">
@@ -661,59 +1029,131 @@ function AdminDashboard() {
                   <th>Age</th>
                   <th>County</th>
                   <th>Technical background</th>
+                  <th>Documents</th>
                   <th>Status</th>
                   <th>Submitted</th>
                 </tr>
               </thead>
+
               <tbody>
-                {applications.map((application) => (
-                  <tr key={application.id}>
-                    <td>{application.fullName}</td>
-                    <td>{application.email}</td>
-                    <td>{application.phone}</td>
-                    <td>{application.gender}</td>
-                    <td>{application.age}</td>
-                    <td>{application.county}</td>
-                    <td>{application.technicalBackground}</td>
-                    <td>
-                      <span className="status-pill">
-                        {application.status}
-                      </span>
-                    </td>
-                    <td>
-                      {new Date(
-                        application.submittedAt
-                      ).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
+                {applications.map((application) => {
+                  const uploadedDocuments = [
+                    {
+                      key: "nationalId",
+                      label: "National ID",
+                    },
+                    {
+                      key: "kcseCertificate",
+                      label: "KCSE certificate",
+                    },
+                    {
+                      key: "supportingDocument",
+                      label: "Supporting document",
+                    },
+                  ];
+
+                  return (
+                    <tr key={application.id}>
+                      <td>{application.fullName}</td>
+                      <td>{application.email}</td>
+                      <td>{application.phone}</td>
+                      <td>{application.gender}</td>
+                      <td>{application.age}</td>
+                      <td>{application.county}</td>
+                      <td>{application.technicalBackground}</td>
+
+                      <td>
+                        <div className="admin-document-list">
+                          {uploadedDocuments.map((document) => {
+                            const file =
+                              application.documents?.[document.key];
+
+                            if (!file) {
+                              return (
+                                <span
+                                  className="missing-document"
+                                  key={document.key}
+                                >
+                                  {document.label}: Not uploaded
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <a
+                                key={document.key}
+                                className="document-download"
+                                href={file.dataUrl}
+                                download={file.name}
+                                title={`Download ${file.name}`}
+                              >
+                                ↓ {document.label}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </td>
+
+                      <td>
+                        <span className="status-pill">
+                          {application.status}
+                        </span>
+                      </td>
+
+                      <td>
+                        {application.submittedAt
+                          ? new Date(
+                              application.submittedAt
+                            ).toLocaleString()
+                          : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
+
+        <p className="privacy-note dashboard-warning">
+          Browser prototype only: applications and documents are
+          stored on the browser that submitted them. Other devices
+          and browsers cannot access these records.
+        </p>
       </div>
     </main>
   );
 }
 
+// PAGE 6: Application success.
 function Success() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const locationState = window.history.state?.usr;
-  const centre = locationState?.centre || "";
+  const location = useLocation();
+  const centre = location.state?.centre || "";
 
   return (
     <main className="page-wrap">
       <div className="form-card success-card">
         <div className="success-icon">✓</div>
+
         <span className="eyebrow">APPLICATION RECEIVED</span>
         <h1>Thank you for applying!</h1>
 
         <p className="muted">
-          Your application has been saved in this browser prototype.
+          Your application and selected documents have been saved
+          in this browser prototype.
         </p>
 
-        {centre && <p><strong>Centre:</strong> {centre}</p>}
+        {centre && (
+          <p>
+            <strong>Centre:</strong> {centre}
+          </p>
+        )}
+
+        <div className="success-reminder">
+          Please keep your original documents available if they
+          are requested during the selection process.
+        </div>
 
         <button
           className="button primary"
@@ -726,6 +1166,7 @@ function Success() {
   );
 }
 
+// APP ROUTES.
 export default function App() {
   return (
     <>
@@ -736,7 +1177,10 @@ export default function App() {
         <Route path="/apply" element={<SelectCentre />} />
         <Route path="/apply/form" element={<ApplicationForm />} />
         <Route path="/admin" element={<Admin />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route
+          path="/admin/dashboard"
+          element={<AdminDashboard />}
+        />
         <Route path="/success" element={<Success />} />
       </Routes>
     </>
