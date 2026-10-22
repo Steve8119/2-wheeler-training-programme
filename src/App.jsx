@@ -8,18 +8,13 @@ import {
   useSearchParams,
   useLocation,
 } from "react-router-dom";
+import { supabase } from "./supabase";
 
 const centres = [
   "NITA Mombasa",
   "NITA Kisumu",
   "E-Waka Mobility Nairobi",
 ];
-
-const ACCESS_CODES = {
-  "NITA Mombasa": "mom2002",
-  "NITA Kisumu": "kis2000",
-  "E-Waka Mobility Nairobi": "nai2010",
-};
 
 const counties = [
   "Baringo", "Bomet", "Bungoma", "Busia", "Elgeyo-Marakwet",
@@ -34,12 +29,9 @@ const counties = [
   "Vihiga", "Wajir", "West Pokot",
 ];
 
-const STORAGE_KEY = "sponsorship_applications";
-const SESSION_KEY = "sponsorship_admin_session";
-
-// Browser prototype limits. A real deployment should use secure
-// file storage instead of storing identity documents in localStorage.
 const MAX_FILE_SIZE = 500 * 1024;
+const MAX_TOTAL_SIZE = 1200 * 1024;
+
 const ALLOWED_FILE_TYPES = [
   "application/pdf",
   "image/jpeg",
@@ -56,7 +48,7 @@ const documentTypes = [
   {
     key: "kcseCertificate",
     label: "KCSE certificate",
-    description: "Upload your KCSE certificate or the accepted result document.",
+    description: "Upload your KCSE certificate or accepted result document.",
     required: true,
   },
   {
@@ -67,19 +59,7 @@ const documentTypes = [
   },
 ];
 
-function readFileAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(
-      new Error(`Could not read ${file.name}. Please try again.`)
-    );
-
-    reader.readAsDataURL(file);
-  });
-}
-
+// HEADER
 function Header() {
   return (
     <header className="header">
@@ -98,7 +78,7 @@ function Header() {
   );
 }
 
-// PAGE 1: Home page.
+// PAGE 1: HOME
 function Home() {
   return (
     <>
@@ -106,16 +86,14 @@ function Home() {
         className="hero"
         style={{
           backgroundImage:
-            "linear-gradient(90deg, rgba(8, 24, 38, 0.92) 0%, rgba(8, 24, 38, 0.72) 52%, rgba(8, 24, 38, 0.30) 100%), url('/image.png')",
+            "linear-gradient(90deg, rgba(8,24,38,.92) 0%, rgba(8,24,38,.72) 52%, rgba(8,24,38,.30) 100%), url('/image.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
         }}
       >
         <div className="hero-content">
-          <span className="eyebrow">
-            YOUR FUTURE STARTS HERE
-          </span>
+          <span className="eyebrow">YOUR FUTURE STARTS HERE</span>
 
           <h1>
             Opportunity begins
@@ -200,19 +178,11 @@ function Home() {
   );
 }
 
-// PAGE 2: Select one of the three centres.
+// PAGE 2: CENTRE SELECTION
 function SelectCentre() {
   const centreDetails = [
-    {
-      name: "NITA Mombasa",
-      location: "Mombasa",
-      number: "01",
-    },
-    {
-      name: "NITA Kisumu",
-      location: "Kisumu",
-      number: "02",
-    },
+    { name: "NITA Mombasa", location: "Mombasa", number: "01" },
+    { name: "NITA Kisumu", location: "Kisumu", number: "02" },
     {
       name: "E-Waka Mobility Nairobi",
       location: "Nairobi",
@@ -246,10 +216,7 @@ function SelectCentre() {
               </div>
 
               <h3>{item.name}</h3>
-
-              <p>
-                Submit your sponsorship application for this centre.
-              </p>
+              <p>Submit your sponsorship application for this centre.</p>
 
               <Link
                 to={`/apply/form?centre=${encodeURIComponent(item.name)}`}
@@ -265,7 +232,7 @@ function SelectCentre() {
   );
 }
 
-// PAGE 3: Student application form.
+// PAGE 3: APPLICATION FORM
 function ApplicationForm() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -304,7 +271,6 @@ function ApplicationForm() {
 
   function updateDocument(event, documentKey) {
     const file = event.target.files?.[0] || null;
-
     setError("");
 
     if (!file) {
@@ -316,17 +282,13 @@ function ApplicationForm() {
     }
 
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      setError(
-        "Please upload PDF, JPG, or PNG documents only."
-      );
+      setError("Please upload PDF, JPG, or PNG documents only.");
       event.target.value = "";
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setError(
-        `${file.name} is too large. Each document must be 500 KB or less in this browser prototype.`
-      );
+      setError(`${file.name} is too large. Each document must be 500 KB or less.`);
       event.target.value = "";
       return;
     }
@@ -349,12 +311,6 @@ function ApplicationForm() {
     }
 
     const age = Number(form.age);
-
-    if (!Number.isInteger(age) || age < 16 || age > 100) {
-      setError("Please enter a valid age between 16 and 100.");
-      return;
-    }
-
     const fullName = form.fullName.trim();
     const email = form.email.trim().toLowerCase();
     const phone = form.phone.replace(/\D/g, "");
@@ -364,28 +320,28 @@ function ApplicationForm() {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     if (phone.length < 9 || phone.length > 15) {
       setError("Please enter a valid phone number.");
       return;
     }
 
-  if (
-  !form.county ||
-  !form.gender ||
-  !form.industrialBackground
-) {
-  setError("Please complete all required fields.");
-  return;
-}
-
-    // Required document checks.
-    if (!documents.nationalId) {
-      setError("Please upload your National ID.");
+    if (!Number.isInteger(age) || age < 16 || age > 100) {
+      setError("Please enter a valid age between 16 and 100.");
       return;
     }
 
-    if (!documents.kcseCertificate) {
-      setError("Please upload your KCSE certificate.");
+    if (!form.gender || !form.county || !form.industrialBackground) {
+      setError("Please complete all required fields.");
+      return;
+    }
+
+    if (!documents.nationalId || !documents.kcseCertificate) {
+      setError("Please upload your National ID and KCSE certificate.");
       return;
     }
 
@@ -395,107 +351,67 @@ function ApplicationForm() {
       0
     );
 
-    if (totalFileSize > 1200 * 1024) {
-      setError(
-        "Your documents are too large in total. Please reduce their sizes and try again."
-      );
+    if (totalFileSize > MAX_TOTAL_SIZE) {
+      setError("Your documents exceed the combined 1.2 MB size limit.");
       return;
     }
 
     setSaving(true);
 
     try {
-      let applications = [];
+      const payload = new FormData();
 
-      try {
-        applications = JSON.parse(
-          localStorage.getItem(STORAGE_KEY) || "[]"
-        );
+      payload.append("centre", selectedCentre);
+      payload.append("fullName", fullName);
+      payload.append("email", email);
+      payload.append("phone", phone);
+      payload.append("gender", form.gender);
+      payload.append("age", String(age));
+      payload.append("county", form.county);
+      payload.append("industrialBackground", form.industrialBackground);
 
-        if (!Array.isArray(applications)) {
-          applications = [];
+      if (documents.nationalId) {
+        payload.append("nationalId", documents.nationalId);
+      }
+
+      if (documents.kcseCertificate) {
+        payload.append("kcseCertificate", documents.kcseCertificate);
+      }
+
+      if (documents.supportingDocument) {
+        payload.append("supportingDocument", documents.supportingDocument);
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submit-application`,
+        {
+          method: "POST",
+          headers: {
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: payload,
         }
-      } catch {
-        setError(
-          "Unable to read saved applications. Please try again."
-        );
-        setSaving(false);
-        return;
-      }
-
-      // Reject duplicate email OR duplicate phone number.
-      const duplicate = applications.some((application) => {
-        const savedEmail = String(application.email || "")
-          .trim()
-          .toLowerCase();
-
-        const savedPhone = String(application.phone || "")
-          .replace(/\D/g, "");
-
-        return savedEmail === email || savedPhone === phone;
-      });
-
-      if (duplicate) {
-        setError(
-          "An application already exists with this email address or phone number. Please use your original application instead of applying again."
-        );
-        setSaving(false);
-        return;
-      }
-
-      // Convert the selected files into data URLs for this local
-      // prototype. This is not recommended for production identity data.
-      const savedDocuments = {};
-
-      for (const documentType of documentTypes) {
-        const file = documents[documentType.key];
-
-        if (!file) {
-          savedDocuments[documentType.key] = null;
-          continue;
-        }
-
-        savedDocuments[documentType.key] = {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          dataUrl: await readFileAsDataURL(file),
-        };
-      }
-
-      const application = {
-        id:
-          typeof crypto !== "undefined" &&
-          typeof crypto.randomUUID === "function"
-            ? crypto.randomUUID()
-            : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-
-        centre: selectedCentre,
-        fullName,
-        email,
-        phone,
-        gender: form.gender,
-        age,
-        county: form.county,
-        industrialBackground: form.industrialBackground,
-        documents: savedDocuments,
-        status: "Pending",
-        submittedAt: new Date().toISOString(),
-      };
-
-      applications.push(application);
-
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(applications)
       );
 
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error || "Unable to submit your application. Please try again."
+        );
+      }
+
       navigate("/success", {
-        state: { centre: selectedCentre },
+        state: {
+          centre: selectedCentre,
+          applicationId: result.applicationId,
+        },
       });
-    } catch {
+    } catch (err) {
       setError(
-        "Your application or documents could not be saved in this browser. Please reduce the document sizes or try another browser."
+        err instanceof Error
+          ? err.message
+          : "Unable to submit your application. Please try again."
       );
     } finally {
       setSaving(false);
@@ -607,9 +523,7 @@ function ApplicationForm() {
                 <option value="">Select gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Prefer not to say">
-                  Prefer not to say
-                </option>
+                <option value="Other">Other</option>
               </select>
             </div>
 
@@ -659,26 +573,19 @@ function ApplicationForm() {
             <option value="">Select an answer</option>
             <option value="Yes">Yes</option>
             <option value="No">No</option>
-            <option value="Some experience">
-              Some experience
-            </option>
           </select>
 
           <div className="form-section-heading document-heading">
             <span>02</span>
             <div>
               <h2>Required documents</h2>
-              <p>
-                Upload clear, readable copies of your documents.
-              </p>
+              <p>Upload clear, readable copies of your documents.</p>
             </div>
           </div>
 
           <div className="document-guidance">
             <strong>Accepted formats: PDF, JPG, and PNG</strong>
-            <span>
-              Maximum 500 KB per file in this browser prototype.
-            </span>
+            <span>Maximum 500 KB per file.</span>
           </div>
 
           <div className="document-grid">
@@ -689,12 +596,9 @@ function ApplicationForm() {
                 <div className="document-card" key={documentType.key}>
                   <div className="document-card-top">
                     <span className="document-icon">↑</span>
-
                     <span
                       className={
-                        documentType.required
-                          ? "required-tag"
-                          : "optional-tag"
+                        documentType.required ? "required-tag" : "optional-tag"
                       }
                     >
                       {documentType.required ? "REQUIRED" : "OPTIONAL"}
@@ -721,13 +625,10 @@ function ApplicationForm() {
                   {file ? (
                     <div className="selected-file">
                       <span className="file-check">✓</span>
-                      <span className="selected-file-name">
-                        {file.name}
-                      </span>
+                      <span className="selected-file-name">{file.name}</span>
                       <button
                         type="button"
                         className="remove-file"
-                        aria-label={`Remove ${file.name}`}
                         onClick={() => {
                           setDocuments((previous) => ({
                             ...previous,
@@ -737,7 +638,6 @@ function ApplicationForm() {
                           const input = document.getElementById(
                             documentType.key
                           );
-
                           if (input) input.value = "";
                         }}
                       >
@@ -745,28 +645,24 @@ function ApplicationForm() {
                       </button>
                     </div>
                   ) : (
-                    <span className="file-hint">
-                      No file selected
-                    </span>
+                    <span className="file-hint">No file selected</span>
                   )}
                 </div>
               );
             })}
           </div>
 
-          
-
           <button
             type="submit"
             className="button primary submit-button"
             disabled={saving}
           >
-            {saving ? "Saving application..." : "Submit application →"}
+            {saving ? "Submitting application..." : "Submit application →"}
           </button>
 
           <p className="privacy-note">
-            Submit only once. Duplicate email addresses and phone
-            numbers are rejected by this browser prototype.
+            Your application and uploaded documents will be submitted
+            securely to the sponsorship portal.
           </p>
         </form>
       </div>
@@ -774,15 +670,17 @@ function ApplicationForm() {
   );
 }
 
-// PAGE 4: Admin login with centre-specific access codes.
+// PAGE 4: SUPABASE ADMIN LOGIN
 function Admin() {
   const navigate = useNavigate();
 
   const [centre, setCentre] = useState("");
-  const [code, setCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  function login(event) {
+  async function login(event) {
     event.preventDefault();
     setError("");
 
@@ -791,31 +689,52 @@ function Admin() {
       return;
     }
 
-    const expectedCode = ACCESS_CODES[centre];
-
-    if (!expectedCode || code.trim() !== expectedCode) {
-      setError(
-        "Invalid access code for the selected centre. Please try again."
-      );
-      return;
-    }
+    if (saving) return;
+    setSaving(true);
 
     try {
-      sessionStorage.setItem(
-        SESSION_KEY,
-        JSON.stringify({
-          centre,
-          loginAt: new Date().toISOString(),
-        })
-      );
-    } catch {
-      setError(
-        "Unable to start an admin session in this browser. Please try again."
-      );
-      return;
-    }
+      const { data, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        });
 
-    navigate("/admin/dashboard");
+      if (authError || !data.user) {
+        throw new Error("Invalid email or password.");
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("admin_profiles")
+        .select("centre, role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (
+        profileError ||
+        !profile ||
+        profile.role !== "centre_admin"
+      ) {
+        await supabase.auth.signOut();
+        throw new Error(
+          "This account is not configured as a centre administrator."
+        );
+      }
+
+      if (profile.centre !== centre) {
+        await supabase.auth.signOut();
+        throw new Error(
+          "Your account is not assigned to the selected centre."
+        );
+      }
+
+      navigate("/admin/dashboard", { replace: true });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to sign in."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -829,7 +748,7 @@ function Admin() {
         <h1>Administrator login</h1>
 
         <p className="muted">
-          Select your assigned centre and enter its access code.
+          Select your centre and sign in with your administrator account.
         </p>
 
         <form onSubmit={login}>
@@ -851,16 +770,28 @@ function Admin() {
             ))}
           </select>
 
-          <label htmlFor="adminCode">Centre access code *</label>
+          <label htmlFor="adminEmail">Email address *</label>
           <input
-            id="adminCode"
-            type="password"
-            value={code}
+            id="adminEmail"
+            type="email"
+            value={email}
             onChange={(event) => {
-              setCode(event.target.value);
+              setEmail(event.target.value);
               setError("");
             }}
-            placeholder="Enter access code"
+            autoComplete="username"
+            required
+          />
+
+          <label htmlFor="adminPassword">Password *</label>
+          <input
+            id="adminPassword"
+            type="password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setError("");
+            }}
             autoComplete="current-password"
             required
           />
@@ -874,49 +805,144 @@ function Admin() {
           <button
             className="button primary submit-button"
             type="submit"
+            disabled={saving}
           >
-            Sign in →
+            {saving ? "Signing in..." : "Sign in →"}
           </button>
-
-          <p className="privacy-note">
-            Each access code selects the dashboard for its own centre.
-            These browser-only codes are not secure production
-            authentication.
-          </p>
         </form>
       </div>
     </main>
   );
 }
 
-// PAGE 5: Centre-specific admin dashboard.
+// PAGE 5: CENTRE ADMIN DASHBOARD
 function AdminDashboard() {
   const navigate = useNavigate();
+
+  const [centre, setCentre] = useState("");
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  let session = null;
-
-  try {
-    session = JSON.parse(
-      sessionStorage.getItem(SESSION_KEY) || "null"
-    );
-  } catch {
-    session = null;
+  async function logout() {
+    await supabase.auth.signOut();
+    navigate("/admin", { replace: true });
   }
 
-  const centre =
-    session && centres.includes(session.centre)
-      ? session.centre
-      : "";
+  useEffect(() => {
+    let active = true;
 
-  function logout() {
-    try {
-      sessionStorage.removeItem(SESSION_KEY);
-    } catch {
-      // Ignore storage errors on logout.
+    async function loadApplications() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const { data: userData, error: userError } =
+          await supabase.auth.getUser();
+
+        if (userError || !userData.user) {
+          navigate("/admin", { replace: true });
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("admin_profiles")
+          .select("centre, role")
+          .eq("id", userData.user.id)
+          .maybeSingle();
+
+        if (
+          profileError ||
+          !profile ||
+          profile.role !== "centre_admin" ||
+          !centres.includes(profile.centre)
+        ) {
+          await supabase.auth.signOut();
+          navigate("/admin", { replace: true });
+          return;
+        }
+
+        if (active) setCentre(profile.centre);
+
+        // RLS must restrict this query to the administrator's centre.
+        const { data, error: applicationsError } = await supabase
+          .from("applications")
+          .select("*")
+          .order("submitted_at", { ascending: false });
+
+        if (applicationsError) throw applicationsError;
+
+        const rows = await Promise.all(
+          (data || []).map(async (application) => {
+            const documentPaths = [
+              ["nationalId", application.national_id_path],
+              ["kcseCertificate", application.kcse_certificate_path],
+              ["supportingDocument", application.supporting_document_path],
+            ];
+
+            const documents = {};
+
+            for (const [key, path] of documentPaths) {
+              if (!path) {
+                documents[key] = null;
+                continue;
+              }
+
+              const { data: signedData, error: signedError } =
+                await supabase.storage
+                  .from("sponsorship-documents")
+                  .createSignedUrl(path, 300);
+
+              documents[key] =
+                signedError || !signedData?.signedUrl
+                  ? null
+                  : {
+                      name: key,
+                      url: signedData.signedUrl,
+                    };
+            }
+
+            return {
+              ...application,
+              fullName: application.full_name,
+              industrialBackground: application.industrial_background,
+              submittedAt: application.submitted_at,
+              documents,
+            };
+          })
+        );
+
+        if (active) setApplications(rows);
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Unable to load applications."
+          );
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
     }
 
-    navigate("/admin");
+    loadApplications();
+
+    return () => {
+      active = false;
+    };
+  }, [navigate, refreshKey]);
+
+  if (loading) {
+    return (
+      <main className="page-wrap">
+        <div className="form-card">
+          <h1>Loading applications...</h1>
+          <p className="muted">Connecting securely to Supabase.</p>
+        </div>
+      </main>
+    );
   }
 
   if (!centre) {
@@ -924,32 +950,13 @@ function AdminDashboard() {
       <main className="page-wrap">
         <div className="form-card">
           <h1>Admin session required</h1>
-          <p className="muted">
-            Please sign in with your centre access code to view
-            applications.
-          </p>
+          <p className="muted">Please sign in to continue.</p>
           <Link to="/admin" className="button primary">
             Go to admin login →
           </Link>
         </div>
       </main>
     );
-  }
-
-  let applications = [];
-
-  try {
-    const stored = JSON.parse(
-      localStorage.getItem(STORAGE_KEY) || "[]"
-    );
-
-    if (Array.isArray(stored)) {
-      applications = stored.filter(
-        (application) => application.centre === centre
-      );
-    }
-  } catch {
-    applications = [];
   }
 
   const total = applications.length;
@@ -960,8 +967,8 @@ function AdminDashboard() {
 
   const withDocuments = applications.filter(
     (application) =>
-      application.documents?.nationalId &&
-      application.documents?.kcseCertificate
+      application.national_id_path &&
+      application.kcse_certificate_path
   ).length;
 
   return (
@@ -985,8 +992,14 @@ function AdminDashboard() {
         <h1>{centre}</h1>
 
         <p className="muted">
-          Applications saved in this browser for your selected centre.
+          Applications stored in the Supabase database for your centre.
         </p>
+
+        {error && (
+          <div className="notice error-notice" role="alert">
+            {error}
+          </div>
+        )}
 
         <div className="stats-grid">
           <div className="stat-card">
@@ -1019,13 +1032,10 @@ function AdminDashboard() {
           <div className="empty-state">
             <span className="empty-state-icon">▤</span>
             <h2>No applications yet</h2>
-            <p>
-              No applications have been submitted for {centre} in
-              this browser.
-            </p>
+            <p>No applications are currently available for {centre}.</p>
           </div>
         ) : (
-          <div className="table-wrap" key={refreshKey}>
+          <div className="table-wrap">
             <table className="applications-table">
               <thead>
                 <tr>
@@ -1045,14 +1055,8 @@ function AdminDashboard() {
               <tbody>
                 {applications.map((application) => {
                   const uploadedDocuments = [
-                    {
-                      key: "nationalId",
-                      label: "National ID",
-                    },
-                    {
-                      key: "kcseCertificate",
-                      label: "KCSE certificate",
-                    },
+                    { key: "nationalId", label: "National ID" },
+                    { key: "kcseCertificate", label: "KCSE certificate" },
                     {
                       key: "supportingDocument",
                       label: "Supporting document",
@@ -1081,7 +1085,7 @@ function AdminDashboard() {
                                   className="missing-document"
                                   key={document.key}
                                 >
-                                  {document.label}: Not uploaded
+                                  {document.label}: Not available
                                 </span>
                               );
                             }
@@ -1090,9 +1094,9 @@ function AdminDashboard() {
                               <a
                                 key={document.key}
                                 className="document-download"
-                                href={file.dataUrl}
-                                download={file.name}
-                                title={`Download ${file.name}`}
+                                href={file.url}
+                                target="_blank"
+                                rel="noreferrer"
                               >
                                 ↓ {document.label}
                               </a>
@@ -1123,20 +1127,20 @@ function AdminDashboard() {
         )}
 
         <p className="privacy-note dashboard-warning">
-          Browser prototype only: applications and documents are
-          stored on the browser that submitted them. Other devices
-          and browsers cannot access these records.
+          Application access depends on Supabase authentication and
+          row-level security. Private document links expire after five minutes.
         </p>
       </div>
     </main>
   );
 }
 
-// PAGE 6: Application success.
+// PAGE 6: SUCCESS
 function Success() {
   const navigate = useNavigate();
   const location = useLocation();
   const centre = location.state?.centre || "";
+  const applicationId = location.state?.applicationId || "";
 
   return (
     <main className="page-wrap">
@@ -1147,13 +1151,20 @@ function Success() {
         <h1>Thank you for applying!</h1>
 
         <p className="muted">
-          Your application and selected documents have been saved
-          in this browser prototype.
+          Your application has been submitted successfully.
+          Please keep your original documents available if they
+          are requested during the selection process.
         </p>
 
         {centre && (
           <p>
             <strong>Centre:</strong> {centre}
+          </p>
+        )}
+
+        {applicationId && (
+          <p>
+            <strong>Application reference:</strong> {applicationId}
           </p>
         )}
 
@@ -1173,23 +1184,20 @@ function Success() {
   );
 }
 
-// Automatically clear the admin session when leaving the admin area.
-// sessionStorage is also cleared when the tab/browser session ends.
+// SIGN OUT WHEN NAVIGATING OUTSIDE ADMIN ROUTES
 function AdminAutoLogout() {
   const location = useLocation();
 
   useEffect(() => {
-    const isAdminPage = location.pathname.startsWith("/admin");
-
-    if (!isAdminPage) {
-      sessionStorage.removeItem(SESSION_KEY);
+    if (!location.pathname.startsWith("/admin")) {
+      supabase.auth.signOut();
     }
   }, [location.pathname]);
 
   return null;
 }
 
-// APP ROUTES.
+// APP ROUTES
 export default function App() {
   return (
     <>
