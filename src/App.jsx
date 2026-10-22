@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Link,
   Routes,
@@ -1026,7 +1026,7 @@ function AdminDashboard() {
                   <th>Gender</th>
                   <th>Age</th>
                   <th>County</th>
-                  <th>Technical background</th>
+                  <th>Industrial background</th>
                   <th>Documents</th>
                   <th>Status</th>
                   <th>Submitted</th>
@@ -1058,7 +1058,7 @@ function AdminDashboard() {
                       <td>{application.gender}</td>
                       <td>{application.age}</td>
                       <td>{application.county}</td>
-                      <td>{application.technicalBackground}</td>
+                      <td>{application.industrialBackground}</td>
 
                       <td>
                         <div className="admin-document-list">
@@ -1164,10 +1164,27 @@ function Success() {
   );
 }
 
+// Automatically clear the admin session when leaving the admin area.
+// sessionStorage is also cleared when the tab/browser session ends.
+function AdminAutoLogout() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const isAdminPage = location.pathname.startsWith("/admin");
+
+    if (!isAdminPage) {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+  }, [location.pathname]);
+
+  return null;
+}
+
 // APP ROUTES.
 export default function App() {
   return (
     <>
+      <AdminAutoLogout />
       <Header />
 
       <Routes>
