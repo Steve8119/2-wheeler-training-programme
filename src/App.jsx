@@ -270,7 +270,7 @@ function ApplicationForm() {
     gender: "",
     age: "",
     county: "",
-    technicalBackground: "",
+    industrialBackground: "",
   });
 
   const [documents, setDocuments] = useState({
@@ -360,10 +360,14 @@ function ApplicationForm() {
       return;
     }
 
-    if (!form.county || !form.gender || !form.technicalBackground) {
-      setError("Please complete all required fields.");
-      return;
-    }
+  if (
+  !form.county ||
+  !form.gender ||
+  !form.industrialBackground
+) {
+  setError("Please complete all required fields.");
+  return;
+}
 
     // Required document checks.
     if (!documents.nationalId) {
@@ -464,7 +468,7 @@ function ApplicationForm() {
         gender: form.gender,
         age,
         county: form.county,
-        technicalBackground: form.technicalBackground,
+        industrialBackground: form.industrialBackground,
         documents: savedDocuments,
         status: "Pending",
         submittedAt: new Date().toISOString(),
