@@ -102,7 +102,16 @@ function Header() {
 function Home() {
   return (
     <>
-      <section className="hero">
+      <section
+        className="hero"
+        style={{
+          backgroundImage:
+            "linear-gradient(90deg, rgba(8, 24, 38, 0.92) 0%, rgba(8, 24, 38, 0.72) 52%, rgba(8, 24, 38, 0.30) 100%), url('/image.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
         <div className="hero-content">
           <span className="eyebrow">
             YOUR FUTURE STARTS HERE
