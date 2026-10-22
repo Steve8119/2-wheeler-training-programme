@@ -741,13 +741,7 @@ function ApplicationForm() {
             })}
           </div>
 
-          <div className="document-privacy-note">
-            <strong>Important:</strong> Upload genuine, readable
-            documents. In this browser-only prototype, files are stored
-            locally in the browser and are not securely uploaded to a
-            central server. Do not use real sensitive documents in a
-            public deployment until secure storage is configured.
-          </div>
+          
 
           <button
             type="submit"
